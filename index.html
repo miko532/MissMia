@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Miss Mia AI</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    body { font-family: 'Outfit', sans-serif; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #0f0a15; }
+    ::-webkit-scrollbar-thumb { background: #261738; border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #3b2257; }
+  </style>
+</head>
+<body class="bg-[#0f0a15] text-pink-50 min-h-screen antialiased selection:bg-pink-400 selection:text-slate-950">
+
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    const API_BASE = "https://ai-w58g.onrender.com/api";
+    axios.defaults.withCredentials = true;
+
+    axios.interceptors.request.use((config) => {
+      const token = localStorage.getItem("token");
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+      return config;
+    }, (error) => Promise.reject(error));
+
+    function App() {
+      const [user, setUser] = useState(null);
+      const [loading, setLoading] = useState(true);
+      const [authMode, setAuthMode] = useState('login');
+      
+      const [email, setEmail] = useState('');
+      const [password, setPassword] = useState('');
+      const [username, setUsername] = useState('');
+      const [authError, setAuthError] = useState('');
+
+      const [conversations, setConversations] = useState([]);
+      const [currentChatId, setCurrentChatId] = useState(null);
+      const [messages, setMessages] = useState([]);
+      const [inputMessage, setInputMessage] = useState('');
+      const [sending, setSending] = useState(false);
+      
+      const messagesEndRef = useRef(null);
+
+      useEffect(() => {
+        checkAuth();
+      }, []);
+
+      useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, [messages, sending]);
+
+      const checkAuth = async () => {
+        try {
+          const res = await axios.get(`${API_BASE}/auth/me`);
+          setUser(res.data.user);
+          fetchConversations();
+        } catch (err) {
+          setUser(null);
+          localStorage.removeItem("token");
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      const handleAuth = async (e) => {
+        e.preventDefault();
+        setAuthError('');
+        try {
+          const endpoint = authMode === 'login' ? '/auth/login' : '/auth/register';
+          const payload = authMode === 'login' 
+            ? { email, password } 
+            : { username, email, password };
+
+          const res = await axios.post(`${API_BASE}${endpoint}`, payload);
+          
+          if (res.data.token) {
+            localStorage.setItem("token", res.data.token);
+          }
+
+          setUser(res.data.user);
+          fetchConversations();
+        } catch (err) {
+          setAuthError(err.response?.data?.message || 'Server connection error occurred.');
+        }
+      };
+
+      const handleLogout = async () => {
+        try {
+          await axios.post(`${API_BASE}/auth/logout`);
+        } catch (err) {
+          console.error(err);
+        } finally {
+          localStorage.removeItem("token");
+          setUser(null);
+          setConversations([]);
+          setMessages([]);
+          setCurrentChatId(null);
+        }
+      };
+
+      const fetchConversations = async () => {
+        try {
+          const res = await axios.get(`${API_BASE}/chat/conversations`);
+          setConversations(res.data);
+          if (res.data.length > 0 && !currentChatId) {
+            selectConversation(res.data[0]._id);
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      };
+
+      const createNewChat = async () => {
+        try {
+          const res = await axios.post(`${API_BASE}/chat/conversations`);
+          setConversations([res.data, ...conversations]);
+          setCurrentChatId(res.data._id);
+          setMessages([]);
+        } catch (err) {
+          console.error(err);
+        }
+      };
+
+      const selectConversation = async (id) => {
+        setCurrentChatId(id);
+        try {
+          const res = await axios.get(`${API_BASE}/chat/conversations/${id}/messages`);
+          setMessages(res.data);
+        } catch (err) {
+          console.error(err);
+        }
+      };
+
+      const deleteConversation = async (e, id) => {
+        e.stopPropagation();
+        try {
+          await axios.delete(`${API_BASE}/chat/conversations/${id}`);
+          const updated = conversations.filter(c => c._id !== id);
+          setConversations(updated);
+          if (currentChatId === id) {
+            if (updated.length > 0) selectConversation(updated[0]._id);
+            else { setCurrentChatId(null); setMessages([]); }
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      };
+
+      const sendMessage = async (e) => {
+        e.preventDefault();
+        if (!inputMessage.trim() || sending) return;
+
+        let activeId = currentChatId;
+
+        if (!activeId) {
+          try {
+            const res = await axios.post(`${API_BASE}/chat/conversations`);
+            activeId = res.data._id;
+            setCurrentChatId(activeId);
+            setConversations([res.data, ...conversations]);
+          } catch (err) {
+            return;
+          }
+        }
+
+        const userText = inputMessage;
+        setInputMessage('');
+        setMessages(prev => [...prev, { role: 'user', content: userText }]);
+        setSending(true);
+
+        try {
+          const res = await axios.post(`${API_BASE}/chat/conversations/${activeId}/messages`, {
+            message: userText
+          });
+          
+          setMessages(prev => [...prev, { role: 'assistant', content: res.data.message }]);
+          fetchConversations();
+        } catch (err) {
+          setMessages(prev => [...prev, { role: 'assistant', content: 'An error occurred while fetching the response from Miss Mia.' }]);
+        } finally {
+          setSending(false);
+        }
+      };
+
+      if (loading) {
+        return (
+          <div className="h-screen w-screen flex items-center justify-center bg-[#0f0a15]">
+            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-pink-400 shadow-[0_0_20px_rgba(244,114,182,0.4)]"></div>
+          </div>
+        );
+      }
+
+      if (!user) {
+        return (
+          <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#1d0e2b] via-[#0f0a15] to-[#08040d]">
+            <div className="absolute -top-40 -left-40 w-96 h-96 bg-pink-500/15 rounded-full blur-3xl"></div>
+            <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-purple-600/15 rounded-full blur-3xl"></div>
+
+            <div className="w-full max-w-md bg-[#160d21]/80 backdrop-blur-2xl border border-pink-500/20 rounded-3xl p-8 shadow-[0_10px_40px_rgba(0,0,0,0.5)] relative z-10">
+              <div className="text-center mb-8">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-tr from-pink-500/20 to-purple-500/20 border border-pink-400/30 rounded-2xl mb-4 text-pink-300 text-2xl shadow-[0_0_25px_rgba(244,114,182,0.2)]">
+                  <i className="fa-solid fa-wand-magic-sparkles"></i>
+                </div>
+                <h1 className="text-3xl font-bold text-white tracking-wide">Miss Mia <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-purple-400">AI</span></h1>
+                <p className="text-pink-200/60 text-xs mt-2 tracking-wider">Your Charming Intelligent Companion</p>
+              </div>
+
+              {authError && (
+                <div className="bg-rose-950/40 border border-rose-500/40 text-rose-300 px-4 py-3 rounded-2xl text-xs mb-6 flex items-center gap-2">
+                  <i className="fa-solid fa-circle-exclamation text-rose-400"></i>
+                  <span>{authError}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleAuth} className="space-y-4">
+                {authMode === 'register' && (
+                  <div>
+                    <label className="block text-xs font-medium text-pink-200/80 mb-1 pl-1">Username</label>
+                    <div className="relative">
+                      <i className="fa-solid fa-user absolute left-4 top-3.5 text-pink-400/50 text-sm"></i>
+                      <input 
+                        type="text" 
+                        required 
+                        value={username} 
+                        onChange={e => setUsername(e.target.value)}
+                        placeholder="Mia_Lover"
+                        className="w-full bg-[#0f0a15]/80 border border-purple-900/40 rounded-2xl py-2.5 pl-11 pr-4 text-sm text-pink-50 placeholder-pink-300/20 focus:outline-none focus:border-pink-400 transition-all shadow-inner"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-xs font-medium text-pink-200/80 mb-1 pl-1">Email Address</label>
+                  <div className="relative">
+                    <i className="fa-solid fa-envelope absolute left-4 top-3.5 text-pink-400/50 text-sm"></i>
+                    <input 
+                      type="email" 
+                      required 
+                      value={email} 
+                      onChange={e => setEmail(e.target.value)}
+                      placeholder="name@example.com"
+                      className="w-full bg-[#0f0a15]/80 border border-purple-900/40 rounded-2xl py-2.5 pl-11 pr-4 text-sm text-pink-50 placeholder-pink-300/20 focus:outline-none focus:border-pink-400 transition-all shadow-inner"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-pink-200/80 mb-1 pl-1">Password</label>
+                  <div className="relative">
+                    <i className="fa-solid fa-lock absolute left-4 top-3.5 text-pink-400/50 text-sm"></i>
+                    <input 
+                      type="password" 
+                      required 
+                      value={password} 
+                      onChange={e => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full bg-[#0f0a15]/80 border border-purple-900/40 rounded-2xl py-2.5 pl-11 pr-4 text-sm text-pink-50 placeholder-pink-300/20 focus:outline-none focus:border-pink-400 transition-all shadow-inner"
+                    />
+                  </div>
+                </div>
+
+                <button 
+                  type="submit" 
+                  className="w-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-400 hover:to-purple-500 text-white font-semibold py-3 rounded-2xl shadow-[0_0_20px_rgba(244,114,182,0.3)] transition-all transform active:scale-[0.98] mt-2"
+                >
+                  {authMode === 'login' ? 'Sign In' : 'Create Account'}
+                </button>
+              </form>
+
+              <div className="mt-6 text-center">
+                <button 
+                  onClick={() => { setAuthMode(authMode === 'login' ? 'register' : 'login'); setAuthError(''); }}
+                  className="text-xs text-pink-300/60 hover:text-pink-300 transition-colors"
+                >
+                  {authMode === 'login' ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div className="flex h-screen overflow-hidden bg-[#0f0a15]">
+          {/* Sidebar */}
+          <div className="w-80 bg-[#140c1f]/90 border-r border-purple-900/30 flex flex-col justify-between hidden md:flex backdrop-blur-md">
+            <div>
+              <div className="p-4 border-b border-purple-900/30 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-pink-400 to-purple-600 border border-pink-300/30 flex items-center justify-center text-white shadow-[0_0_15px_rgba(244,114,182,0.3)]">
+                    <i className="fa-solid fa-sparkles text-base"></i>
+                  </div>
+                  <div>
+                    <h2 className="font-bold text-pink-50 text-base leading-none tracking-wide">Miss Mia</h2>
+                    <span className="text-[10px] text-pink-400 font-medium tracking-wider">AI ASSISTANT ✨</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4">
+                <button 
+                  onClick={createNewChat}
+                  className="w-full bg-pink-500/10 hover:bg-pink-500/20 text-pink-200 border border-pink-500/30 font-medium py-2.5 px-4 rounded-2xl flex items-center justify-center gap-2 transition-all group shadow-sm"
+                >
+                  <i className="fa-solid fa-plus text-pink-400 group-hover:rotate-90 transition-transform"></i>
+                  <span className="text-xs">New Conversation</span>
+                </button>
+              </div>
+
+              <div className="px-3 overflow-y-auto max-h-[calc(100vh-210px)] space-y-1">
+                {conversations.map(chat => (
+                  <div 
+                    key={chat._id}
+                    onClick={() => selectConversation(chat._id)}
+                    className={`group flex items-center justify-between p-3 rounded-2xl cursor-pointer text-xs font-medium transition-all ${
+                      currentChatId === chat._id 
+                        ? 'bg-gradient-to-r from-purple-900/40 to-pink-900/30 border border-pink-500/40 text-pink-200 shadow-md' 
+                        : 'text-pink-200/50 hover:bg-purple-900/20 hover:text-pink-100 border border-transparent'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 truncate">
+                      <i className="fa-regular fa-heart text-pink-400/60 group-hover:text-pink-400"></i>
+                      <span className="truncate">{chat.title || 'New Session'}</span>
+                    </div>
+                    <button 
+                      onClick={(e) => deleteConversation(e, chat._id)}
+                      className="opacity-0 group-hover:opacity-100 text-pink-300/40 hover:text-rose-400 p-1 transition-opacity"
+                    >
+                      <i className="fa-regular fa-trash-can"></i>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-purple-900/30 bg-[#0f0a15]/60 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-purple-800 to-pink-700 border border-pink-400/30 flex items-center justify-center text-pink-100 font-bold text-sm shadow-md">
+                  {user.username.charAt(0).toUpperCase()}
+                </div>
+                <div className="overflow-hidden">
+                  <h4 className="text-xs font-semibold text-pink-100 truncate">{user.username}</h4>
+                  <p className="text-[10px] text-pink-300/40 truncate">{user.email}</p>
+                </div>
+              </div>
+              <button 
+                onClick={handleLogout}
+                title="Log Out"
+                className="text-pink-300/40 hover:text-rose-400 p-2 rounded-xl transition-colors"
+              >
+                <i className="fa-solid fa-right-from-bracket"></i>
+              </button>
+            </div>
+          </div>
+
+          {/* Main Chat Area */}
+          <div className="flex-1 flex flex-col h-full bg-[#0f0a15] relative">
+            <div className="h-16 border-b border-purple-900/30 bg-[#140c1f]/50 px-6 flex items-center justify-between backdrop-blur-md z-10">
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-pink-400 to-purple-500 flex items-center justify-center text-white text-base shadow-[0_0_15px_rgba(244,114,182,0.4)]">
+                    <i className="fa-solid fa-wand-magic-sparkles"></i>
+                  </div>
+                  <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-400 border-2 border-[#0f0a15] rounded-full"></span>
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-pink-50 flex items-center gap-2">
+                    Miss Mia
+                    <span className="bg-pink-500/10 border border-pink-400/30 text-pink-300 text-[10px] font-medium px-2 py-0.5 rounded-full">Smart AI 🌸</span>
+                  </h3>
+                  <p className="text-[11px] text-pink-300/50">Ready to inspire, assist, and help you thrive</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 md:hidden">
+                <button onClick={createNewChat} className="p-2 text-pink-200 hover:text-white">
+                  <i className="fa-solid fa-plus"></i>
+                </button>
+                <button onClick={handleLogout} className="p-2 text-pink-300/50 hover:text-rose-400">
+                  <i className="fa-solid fa-right-from-bracket"></i>
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+              {messages.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-center p-6 max-w-lg mx-auto">
+                  <div className="w-16 h-16 bg-gradient-to-tr from-pink-500/10 to-purple-500/10 border border-pink-400/20 rounded-3xl flex items-center justify-center text-pink-300 text-2xl mb-4 shadow-[0_0_30px_rgba(244,114,182,0.15)]">
+                    <i className="fa-solid fa-wand-magic-sparkles"></i>
+                  </div>
+                  <h3 className="text-xl font-bold text-pink-50">How can I assist you today?</h3>
+                  <p className="text-pink-200/50 text-xs mt-2 leading-relaxed">
+                    I am Miss Mia, your personal assistant. Ask me anything, explore new ideas, or organize your thoughts.
+                  </p>
+                  <div className="grid grid-cols-2 gap-3 mt-6 w-full text-xs">
+                    <button 
+                      onClick={() => setInputMessage('Help me outline a professional project plan')}
+                      className="p-3.5 bg-[#160d21]/80 hover:bg-purple-900/30 border border-purple-900/40 rounded-2xl text-pink-200 text-left transition-all hover:border-pink-400/40 shadow-sm"
+                    >
+                      🌸 Outline a project plan
+                    </button>
+                    <button 
+                      onClick={() => setInputMessage('Explain complex concepts simply')}
+                      className="p-3.5 bg-[#160d21]/80 hover:bg-purple-900/30 border border-purple-900/40 rounded-2xl text-pink-200 text-left transition-all hover:border-pink-400/40 shadow-sm"
+                    >
+                      ✨ Explain complex concepts
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                messages.map((msg, idx) => (
+                  <div 
+                    key={idx} 
+                    className={`flex items-start gap-3 max-w-3xl ${msg.role === 'user' ? 'ml-auto flex-row-reverse' : 'mr-auto'}`}
+                  >
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs shrink-0 ${
+                      msg.role === 'user' 
+                        ? 'bg-purple-950 text-pink-200 border border-purple-800/50' 
+                        : 'bg-gradient-to-br from-pink-400 to-purple-500 text-white shadow-md'
+                    }`}>
+                      <i className={`fa-solid ${msg.role === 'user' ? 'fa-user' : 'fa-wand-magic-sparkles'}`}></i>
+                    </div>
+
+                    <div className={`p-4 rounded-3xl text-xs md:text-sm leading-relaxed ${
+                      msg.role === 'user'
+                        ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white font-normal rounded-tr-none shadow-md'
+                        : 'bg-[#160d21] border border-purple-900/30 text-pink-50 rounded-tl-none shadow-md'
+                    }`}>
+                      <p className="whitespace-pre-wrap">{msg.content}</p>
+                    </div>
+                  </div>
+                ))
+              )}
+
+              {sending && (
+                <div className="flex items-start gap-3 max-w-3xl mr-auto">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 text-white flex items-center justify-center text-xs shrink-0 shadow-md">
+                    <i className="fa-solid fa-wand-magic-sparkles"></i>
+                  </div>
+                  <div className="bg-[#160d21] border border-purple-900/30 text-pink-300/60 p-4 rounded-3xl rounded-tl-none text-xs flex items-center gap-2">
+                    <div className="w-2 h-2 bg-pink-400 rounded-full animate-ping"></div>
+                    <span>Miss Mia is thinking...</span>
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            <div className="p-4 border-t border-purple-900/30 bg-[#140c1f]/50 backdrop-blur-md">
+              <form onSubmit={sendMessage} className="max-w-4xl mx-auto relative flex items-center">
+                <input 
+                  type="text"
+                  value={inputMessage}
+                  onChange={e => setInputMessage(e.target.value)}
+                  placeholder="Ask Miss Mia anything..."
+                  className="w-full bg-[#160d21] border border-purple-900/40 focus:border-pink-400/60 rounded-full py-3.5 pl-5 pr-14 text-sm text-pink-50 placeholder-pink-300/30 focus:outline-none transition-all shadow-inner"
+                />
+                <button 
+                  type="submit"
+                  disabled={!inputMessage.trim() || sending}
+                  className="absolute right-2 w-9 h-9 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-400 hover:to-purple-500 disabled:bg-purple-950 disabled:text-pink-300/20 text-white rounded-full flex items-center justify-center transition-all shadow-[0_0_12px_rgba(244,114,182,0.3)]"
+                >
+                  <i className="fa-solid fa-paper-plane text-xs"></i>
+                </button>
+              </form>
+            </div>
+
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
