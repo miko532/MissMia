@@ -1,29 +1,25 @@
 <!DOCTYPE html>
-<html lang="en" dir="ltr">
+<html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Miss Mia AI</title>
   
   <script src="https://cdn.tailwindcss.com"></script>
-  
   <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-  
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  
   <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-NE8QH6RTWG"></script>
   <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag() { dataLayer.push(arguments); }
-      gtag('js', new Date());
-      gtag('config', 'G-NE8QH6RTWG');
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', 'G-NE8QH6RTWG');
   </script>
   
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-  
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
   <style>
@@ -82,7 +78,6 @@
         try {
           const res = await axios.get(`${API_BASE}/auth/me`);
           setUser(res.data.user);
-          // لا يتم جلب المحادثات إلا إذا كان المستخدم مصرحاً له (role !== 0)
           if (res.data.user && res.data.user.role !== 0) {
             fetchConversations();
           }
@@ -114,7 +109,7 @@
             fetchConversations();
           }
         } catch (err) {
-          setAuthError(err.response?.data?.message || 'Server connection error occurred.');
+          setAuthError(err.response?.data?.message || 'حدث خطأ أثناء الاتصال بالخادم.');
         }
       };
 
@@ -212,7 +207,7 @@
         } catch (err) {
           const errMsg = err.response?.status === 403 
             ? (err.response?.data?.message || 'عذراً، تم تعطيل وصولك إلى الذكاء الاصطناعي (ممنوع الدخول).')
-            : 'An error occurred while fetching the response from Miss Mia.';
+            : 'حدث خطأ أثناء جلب الرد من Miss Mia.';
           setMessages(prev => [...prev, { role: 'assistant', content: errMsg }]);
         } finally {
           setSending(false);
@@ -239,7 +234,7 @@
                   <i className="fa-solid fa-wand-magic-sparkles"></i>
                 </div>
                 <h1 className="text-3xl font-bold text-white tracking-wide">Miss Mia <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-purple-400">AI</span></h1>
-                <p className="text-pink-200/60 text-xs mt-2 tracking-wider">Your Charming Intelligent Companion</p>
+                <p className="text-pink-200/60 text-xs mt-2 tracking-wider">مساعدك الذكي للتحدث والتطوير</p>
               </div>
 
               {authError && (
@@ -252,47 +247,47 @@
               <form onSubmit={handleAuth} className="space-y-4">
                 {authMode === 'register' && (
                   <div>
-                    <label className="block text-xs font-medium text-pink-200/80 mb-1 pl-1">Username</label>
+                    <label className="block text-xs font-medium text-pink-200/80 mb-1 pr-1">اسم المستخدم</label>
                     <div className="relative">
-                      <i className="fa-solid fa-user absolute left-4 top-3.5 text-pink-400/50 text-sm"></i>
+                      <i className="fa-solid fa-user absolute right-4 top-3.5 text-pink-400/50 text-sm"></i>
                       <input 
                         type="text" 
                         required 
                         value={username} 
                         onChange={e => setUsername(e.target.value)}
-                        placeholder="Mia_Lover"
-                        className="w-full bg-[#0f0a15]/80 border border-purple-900/40 rounded-2xl py-2.5 pl-11 pr-4 text-sm text-pink-50 placeholder-pink-300/20 focus:outline-none focus:border-pink-400 transition-all shadow-inner"
+                        placeholder="Mia_User"
+                        className="w-full bg-[#0f0a15]/80 border border-purple-900/40 rounded-2xl py-2.5 pr-11 pl-4 text-sm text-pink-50 placeholder-pink-300/20 focus:outline-none focus:border-pink-400 transition-all shadow-inner"
                       />
                     </div>
                   </div>
                 )}
 
                 <div>
-                  <label className="block text-xs font-medium text-pink-200/80 mb-1 pl-1">Email Address</label>
+                  <label className="block text-xs font-medium text-pink-200/80 mb-1 pr-1">البريد الإلكتروني</label>
                   <div className="relative">
-                    <i className="fa-solid fa-envelope absolute left-4 top-3.5 text-pink-400/50 text-sm"></i>
+                    <i className="fa-solid fa-envelope absolute right-4 top-3.5 text-pink-400/50 text-sm"></i>
                     <input 
                       type="email" 
                       required 
                       value={email} 
                       onChange={e => setEmail(e.target.value)}
                       placeholder="name@example.com"
-                      className="w-full bg-[#0f0a15]/80 border border-purple-900/40 rounded-2xl py-2.5 pl-11 pr-4 text-sm text-pink-50 placeholder-pink-300/20 focus:outline-none focus:border-pink-400 transition-all shadow-inner"
+                      className="w-full bg-[#0f0a15]/80 border border-purple-900/40 rounded-2xl py-2.5 pr-11 pl-4 text-sm text-pink-50 placeholder-pink-300/20 focus:outline-none focus:border-pink-400 transition-all shadow-inner"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-medium text-pink-200/80 mb-1 pl-1">Password</label>
+                  <label className="block text-xs font-medium text-pink-200/80 mb-1 pr-1">كلمة المرور</label>
                   <div className="relative">
-                    <i className="fa-solid fa-lock absolute left-4 top-3.5 text-pink-400/50 text-sm"></i>
+                    <i className="fa-solid fa-lock absolute right-4 top-3.5 text-pink-400/50 text-sm"></i>
                     <input 
                       type="password" 
                       required 
                       value={password} 
                       onChange={e => setPassword(e.target.value)}
                       placeholder="••••••••"
-                      className="w-full bg-[#0f0a15]/80 border border-purple-900/40 rounded-2xl py-2.5 pl-11 pr-4 text-sm text-pink-50 placeholder-pink-300/20 focus:outline-none focus:border-pink-400 transition-all shadow-inner"
+                      className="w-full bg-[#0f0a15]/80 border border-purple-900/40 rounded-2xl py-2.5 pr-11 pl-4 text-sm text-pink-50 placeholder-pink-300/20 focus:outline-none focus:border-pink-400 transition-all shadow-inner"
                     />
                   </div>
                 </div>
@@ -301,7 +296,7 @@
                   type="submit" 
                   className="w-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-400 hover:to-purple-500 text-white font-semibold py-3 rounded-2xl shadow-[0_0_20px_rgba(244,114,182,0.3)] transition-all transform active:scale-[0.98] mt-2"
                 >
-                  {authMode === 'login' ? 'Sign In' : 'Create Account'}
+                  {authMode === 'login' ? 'تسجيل الدخول' : 'إنشاء حساب جديد'}
                 </button>
               </form>
 
@@ -310,7 +305,7 @@
                   onClick={() => { setAuthMode(authMode === 'login' ? 'register' : 'login'); setAuthError(''); }}
                   className="text-xs text-pink-300/60 hover:text-pink-300 transition-colors"
                 >
-                  {authMode === 'login' ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
+                  {authMode === 'login' ? 'ليس لديك حساب؟ قم بإنشاء حساب جديد' : 'لديك حساب بالفعل؟ قم بتسجيل الدخول'}
                 </button>
               </div>
             </div>
@@ -318,7 +313,6 @@
         );
       }
 
-      // شاشة منع الوصول إذا كانت قيمة role تساوي 0
       if (user.role === 0) {
         return (
           <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#2a0e1a] via-[#0f0a15] to-[#08040d]">
@@ -334,7 +328,11 @@
               <p className="text-rose-300/80 font-medium text-sm mt-1">Access Denied</p>
 
               <div className="bg-rose-950/30 border border-rose-500/20 rounded-2xl p-4 my-6 text-xs leading-relaxed text-pink-100/70">
-                حسابك الحالي لا يملك الصلاحية لتجربة أو استخدام الذكاء الاصطناعي (الدور: <span className="font-mono text-rose-300 font-bold">0</span>). يرجى التواصل مع المسؤول لتفعيل حسابك.
+                حسابك الحالي لا يملك الصلاحية لتجربة أو استخدام الذكاء الاصطناعي (الدور: <span className="font-mono text-rose-300 font-bold">0</span>). يرجى التواصل مع عمه X:Aliciao_o34.
+                
+                <br />
+
+                <a href="https://x.com/Aliciao_o34">https://x.com/Aliciao_o34</a>
               </div>
 
               <div className="space-y-3">
@@ -353,8 +351,8 @@
 
       return (
         <div className="flex h-screen overflow-hidden bg-[#0f0a15]">
-          {/* Sidebar */}
-          <div className="w-80 bg-[#140c1f]/90 border-r border-purple-900/30 flex flex-col justify-between hidden md:flex backdrop-blur-md">
+          {/* الشريط الجانبي */}
+          <div className="w-80 bg-[#140c1f]/90 border-l border-purple-900/30 flex flex-col justify-between hidden md:flex backdrop-blur-md">
             <div>
               <div className="p-4 border-b border-purple-900/30 flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -363,7 +361,7 @@
                   </div>
                   <div>
                     <h2 className="font-bold text-pink-50 text-base leading-none tracking-wide">Miss Mia</h2>
-                    <span className="text-[10px] text-pink-400 font-medium tracking-wider">AI ASSISTANT ✨</span>
+                    <span className="text-[10px] text-pink-400 font-medium tracking-wider">مساعدك الذكي ✨</span>
                   </div>
                 </div>
               </div>
@@ -374,7 +372,7 @@
                   className="w-full bg-pink-500/10 hover:bg-pink-500/20 text-pink-200 border border-pink-500/30 font-medium py-2.5 px-4 rounded-2xl flex items-center justify-center gap-2 transition-all group shadow-sm"
                 >
                   <i className="fa-solid fa-plus text-pink-400 group-hover:rotate-90 transition-transform"></i>
-                  <span className="text-xs">New Conversation</span>
+                  <span className="text-xs">محادثة جديدة</span>
                 </button>
               </div>
 
@@ -391,7 +389,7 @@
                   >
                     <div className="flex items-center gap-2.5 truncate">
                       <i className="fa-regular fa-heart text-pink-400/60 group-hover:text-pink-400"></i>
-                      <span className="truncate">{chat.title || 'New Session'}</span>
+                      <span className="truncate">{chat.title || 'محادثة جديدة'}</span>
                     </div>
                     <button 
                       onClick={(e) => deleteConversation(e, chat._id)}
@@ -416,7 +414,7 @@
               </div>
               <button 
                 onClick={handleLogout}
-                title="Log Out"
+                title="تسجيل الخروج"
                 className="text-pink-300/40 hover:text-rose-400 p-2 rounded-xl transition-colors"
               >
                 <i className="fa-solid fa-right-from-bracket"></i>
@@ -424,7 +422,7 @@
             </div>
           </div>
 
-          {/* Main Chat Area */}
+          {/* منطقة المحادثة الرئيسية */}
           <div className="flex-1 flex flex-col h-full bg-[#0f0a15] relative">
             <div className="h-16 border-b border-purple-900/30 bg-[#140c1f]/50 px-6 flex items-center justify-between backdrop-blur-md z-10">
               <div className="flex items-center gap-3">
@@ -432,14 +430,14 @@
                   <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-pink-400 to-purple-500 flex items-center justify-center text-white text-base shadow-[0_0_15px_rgba(244,114,182,0.4)]">
                     <i className="fa-solid fa-wand-magic-sparkles"></i>
                   </div>
-                  <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-400 border-2 border-[#0f0a15] rounded-full"></span>
+                  <span className="absolute bottom-0 left-0 w-3 h-3 bg-emerald-400 border-2 border-[#0f0a15] rounded-full"></span>
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-pink-50 flex items-center gap-2">
                     Miss Mia
                     <span className="bg-pink-500/10 border border-pink-400/30 text-pink-300 text-[10px] font-medium px-2 py-0.5 rounded-full">Smart AI 🌸</span>
                   </h3>
-                  <p className="text-[11px] text-pink-300/50">Ready to inspire, assist, and help you thrive</p>
+                  <p className="text-[11px] text-pink-300/50"> عمتك </p>
                 </div>
               </div>
 
@@ -459,22 +457,22 @@
                   <div className="w-16 h-16 bg-gradient-to-tr from-pink-500/10 to-purple-500/10 border border-pink-400/20 rounded-3xl flex items-center justify-center text-pink-300 text-2xl mb-4 shadow-[0_0_30px_rgba(244,114,182,0.15)]">
                     <i className="fa-solid fa-wand-magic-sparkles"></i>
                   </div>
-                  <h3 className="text-xl font-bold text-pink-50">How can I assist you today?</h3>
+                  <h3 className="text-xl font-bold text-pink-50">كيف يمكنني مساعدتك اليوم؟</h3>
                   <p className="text-pink-200/50 text-xs mt-2 leading-relaxed">
-                    I am Miss Mia, your personal assistant. Ask me anything, explore new ideas, or organize your thoughts.
+                   انا ميا عمتك و انت مطيعي
                   </p>
                   <div className="grid grid-cols-2 gap-3 mt-6 w-full text-xs">
                     <button 
-                      onClick={() => setInputMessage('Help me outline a professional project plan')}
-                      className="p-3.5 bg-[#160d21]/80 hover:bg-purple-900/30 border border-purple-900/40 rounded-2xl text-pink-200 text-left transition-all hover:border-pink-400/40 shadow-sm"
+                      onClick={() => setInputMessage('ساعدني في التخطيط لمشروع جديد')}
+                      className="p-3.5 bg-[#160d21]/80 hover:bg-purple-900/30 border border-purple-900/40 rounded-2xl text-pink-200 text-right transition-all hover:border-pink-400/40 shadow-sm"
                     >
-                      🌸 Outline a project plan
+                      🌸 خطة مشروع جديد
                     </button>
                     <button 
-                      onClick={() => setInputMessage('Explain complex concepts simply')}
-                      className="p-3.5 bg-[#160d21]/80 hover:bg-purple-900/30 border border-purple-900/40 rounded-2xl text-pink-200 text-left transition-all hover:border-pink-400/40 shadow-sm"
+                      onClick={() => setInputMessage('اشرح لي مفاهيم البرمجة بشكل مبسط')}
+                      className="p-3.5 bg-[#160d21]/80 hover:bg-purple-900/30 border border-purple-900/40 rounded-2xl text-pink-200 text-right transition-all hover:border-pink-400/40 shadow-sm"
                     >
-                      ✨ Explain complex concepts
+                      ✨ شرح المفاهيم المعقدة
                     </button>
                   </div>
                 </div>
@@ -482,7 +480,7 @@
                 messages.map((msg, idx) => (
                   <div 
                     key={idx} 
-                    className={`flex items-start gap-3 max-w-3xl ${msg.role === 'user' ? 'ml-auto flex-row-reverse' : 'mr-auto'}`}
+                    className={`flex items-start gap-3 max-w-3xl ${msg.role === 'user' ? 'mr-auto flex-row-reverse' : 'ml-auto'}`}
                   >
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs shrink-0 ${
                       msg.role === 'user' 
@@ -494,8 +492,8 @@
 
                     <div className={`p-4 rounded-3xl text-xs md:text-sm leading-relaxed ${
                       msg.role === 'user'
-                        ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white font-normal rounded-tr-none shadow-md'
-                        : 'bg-[#160d21] border border-purple-900/30 text-pink-50 rounded-tl-none shadow-md'
+                        ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white font-normal rounded-tl-none shadow-md'
+                        : 'bg-[#160d21] border border-purple-900/30 text-pink-50 rounded-tr-none shadow-md'
                     }`}>
                       <p className="whitespace-pre-wrap">{msg.content}</p>
                     </div>
@@ -504,13 +502,13 @@
               )}
 
               {sending && (
-                <div className="flex items-start gap-3 max-w-3xl mr-auto">
+                <div className="flex items-start gap-3 max-w-3xl ml-auto">
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 text-white flex items-center justify-center text-xs shrink-0 shadow-md">
                     <i className="fa-solid fa-wand-magic-sparkles"></i>
                   </div>
-                  <div className="bg-[#160d21] border border-purple-900/30 text-pink-300/60 p-4 rounded-3xl rounded-tl-none text-xs flex items-center gap-2">
+                  <div className="bg-[#160d21] border border-purple-900/30 text-pink-300/60 p-4 rounded-3xl rounded-tr-none text-xs flex items-center gap-2">
                     <div className="w-2 h-2 bg-pink-400 rounded-full animate-ping"></div>
-                    <span>Miss Mia is thinking...</span>
+                    <span>Miss Mia تفكر الآن...</span>
                   </div>
                 </div>
               )}
@@ -523,13 +521,13 @@
                   type="text" 
                   value={inputMessage} 
                   onChange={e => setInputMessage(e.target.value)}
-                  placeholder="Ask Miss Mia anything..."
-                  className="w-full bg-[#160d21] border border-purple-900/40 focus:border-pink-400/60 rounded-full py-3.5 pl-5 pr-14 text-sm text-pink-50 placeholder-pink-300/30 focus:outline-none transition-all shadow-inner"
+                  placeholder="اسأل Miss Mia أي شيء..."
+                  className="w-full bg-[#160d21] border border-purple-900/40 focus:border-pink-400/60 rounded-full py-3.5 pr-5 pl-14 text-sm text-pink-50 placeholder-pink-300/30 focus:outline-none transition-all shadow-inner"
                 />
                 <button 
                   type="submit" 
                   disabled={!inputMessage.trim() || sending}
-                  className="absolute right-2 w-9 h-9 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-400 hover:to-purple-500 disabled:bg-purple-950 disabled:text-pink-300/20 text-white rounded-full flex items-center justify-center transition-all shadow-[0_0_12px_rgba(244,114,182,0.3)]"
+                  className="absolute left-2 w-9 h-9 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-400 hover:to-purple-500 disabled:bg-purple-950 disabled:text-pink-300/20 text-white rounded-full flex items-center justify-center transition-all shadow-[0_0_12px_rgba(244,114,182,0.3)]"
                 >
                   <i className="fa-solid fa-paper-plane text-xs"></i>
                 </button>
