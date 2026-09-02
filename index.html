@@ -14,13 +14,13 @@
   
   <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 
-   <script async src="https://www.googletagmanager.com/gtag/js?id=G-NE8QH6RTWG"></script>
-    <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag() { dataLayer.push(arguments); }
-        gtag('js', new Date());
-        gtag('config', 'G-NE8QH6RTWG');
-    </script>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-NE8QH6RTWG"></script>
+  <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() { dataLayer.push(arguments); }
+      gtag('js', new Date());
+      gtag('config', 'G-NE8QH6RTWG');
+  </script>
   
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   
@@ -82,7 +82,10 @@
         try {
           const res = await axios.get(`${API_BASE}/auth/me`);
           setUser(res.data.user);
-          fetchConversations();
+          // لا يتم جلب المحادثات إلا إذا كان المستخدم مصرحاً له (role !== 0)
+          if (res.data.user && res.data.user.role !== 0) {
+            fetchConversations();
+          }
         } catch (err) {
           setUser(null);
           localStorage.removeItem("token");
@@ -107,7 +110,9 @@
           }
 
           setUser(res.data.user);
-          fetchConversations();
+          if (res.data.user && res.data.user.role !== 0) {
+            fetchConversations();
+          }
         } catch (err) {
           setAuthError(err.response?.data?.message || 'Server connection error occurred.');
         }
@@ -205,7 +210,10 @@
           setMessages(prev => [...prev, { role: 'assistant', content: res.data.message }]);
           fetchConversations();
         } catch (err) {
-          setMessages(prev => [...prev, { role: 'assistant', content: 'An error occurred while fetching the response from Miss Mia.' }]);
+          const errMsg = err.response?.status === 403 
+            ? (err.response?.data?.message || 'عذراً، تم تعطيل وصولك إلى الذكاء الاصطناعي (ممنوع الدخول).')
+            : 'An error occurred while fetching the response from Miss Mia.';
+          setMessages(prev => [...prev, { role: 'assistant', content: errMsg }]);
         } finally {
           setSending(false);
         }
@@ -303,6 +311,39 @@
                   className="text-xs text-pink-300/60 hover:text-pink-300 transition-colors"
                 >
                   {authMode === 'login' ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // شاشة منع الوصول إذا كانت قيمة role تساوي 0
+      if (user.role === 0) {
+        return (
+          <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#2a0e1a] via-[#0f0a15] to-[#08040d]">
+            <div className="absolute -top-40 -left-40 w-96 h-96 bg-rose-500/15 rounded-full blur-3xl"></div>
+            <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-purple-600/15 rounded-full blur-3xl"></div>
+
+            <div className="w-full max-w-md bg-[#160d21]/90 backdrop-blur-2xl border border-rose-500/30 rounded-3xl p-8 shadow-[0_10px_40px_rgba(0,0,0,0.6)] relative z-10 text-center">
+              <div className="inline-flex items-center justify-center w-20 h-20 bg-rose-500/10 border border-rose-500/30 rounded-3xl mb-5 text-rose-400 text-3xl shadow-[0_0_30px_rgba(244,63,94,0.25)]">
+                <i className="fa-solid fa-ban"></i>
+              </div>
+              
+              <h2 className="text-2xl font-bold text-white tracking-wide">ممنوع من الدخول</h2>
+              <p className="text-rose-300/80 font-medium text-sm mt-1">Access Denied</p>
+
+              <div className="bg-rose-950/30 border border-rose-500/20 rounded-2xl p-4 my-6 text-xs leading-relaxed text-pink-100/70">
+                حسابك الحالي لا يملك الصلاحية لتجربة أو استخدام الذكاء الاصطناعي (الدور: <span className="font-mono text-rose-300 font-bold">0</span>). يرجى التواصل مع المسؤول لتفعيل حسابك.
+              </div>
+
+              <div className="space-y-3">
+                <button 
+                  onClick={handleLogout}
+                  className="w-full bg-gradient-to-r from-rose-600 to-purple-700 hover:from-rose-500 hover:to-purple-600 text-white font-medium py-3 rounded-2xl shadow-[0_0_20px_rgba(225,29,72,0.3)] transition-all flex items-center justify-center gap-2 text-sm"
+                >
+                  <i className="fa-solid fa-right-from-bracket"></i>
+                  <span>تسجيل الخروج والتبديل لحساب آخر</span>
                 </button>
               </div>
             </div>
@@ -479,14 +520,14 @@
             <div className="p-4 border-t border-purple-900/30 bg-[#140c1f]/50 backdrop-blur-md">
               <form onSubmit={sendMessage} className="max-w-4xl mx-auto relative flex items-center">
                 <input 
-                  type="text"
-                  value={inputMessage}
+                  type="text" 
+                  value={inputMessage} 
                   onChange={e => setInputMessage(e.target.value)}
                   placeholder="Ask Miss Mia anything..."
                   className="w-full bg-[#160d21] border border-purple-900/40 focus:border-pink-400/60 rounded-full py-3.5 pl-5 pr-14 text-sm text-pink-50 placeholder-pink-300/30 focus:outline-none transition-all shadow-inner"
                 />
                 <button 
-                  type="submit"
+                  type="submit" 
                   disabled={!inputMessage.trim() || sending}
                   className="absolute right-2 w-9 h-9 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-400 hover:to-purple-500 disabled:bg-purple-950 disabled:text-pink-300/20 text-white rounded-full flex items-center justify-center transition-all shadow-[0_0_12px_rgba(244,114,182,0.3)]"
                 >
