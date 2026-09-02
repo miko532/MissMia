@@ -179,9 +179,11 @@
         }
       };
 
-      const sendMessage = async (e) => {
-        e.preventDefault();
-        if (!inputMessage.trim() || sending || (user && user.messagesLeft <= 0)) return;
+      const sendMessage = async (e, customText = null) => {
+        if (e) e.preventDefault();
+        const textToSend = customText || inputMessage;
+
+        if (!textToSend.trim() || sending) return;
 
         let activeId = currentChatId;
 
@@ -196,14 +198,13 @@
           }
         }
 
-        const userText = inputMessage;
         setInputMessage('');
-        setMessages(prev => [...prev, { role: 'user', content: userText }]);
+        setMessages(prev => [...prev, { role: 'user', content: textToSend }]);
         setSending(true);
 
         try {
           const res = await axios.post(`${API_BASE}/chat/conversations/${activeId}/messages`, {
-            message: userText
+            message: textToSend
           });
           
           setMessages(prev => [...prev, { role: 'assistant', content: res.data.message }]);
@@ -324,7 +325,6 @@
       return (
         <div className="flex h-screen overflow-hidden bg-[#0f0a15] relative">
           
-          {/* Overlay خلفية القائمة عند فتحها على الموبايل */}
           {sidebarOpen && (
             <div 
               onClick={() => setSidebarOpen(false)} 
@@ -355,7 +355,7 @@
                 </button>
               </div>
 
-              {/* شريط رصيد الرسائل المتبقية */}
+              {/* شريط رصيد الرسائل */}
               <div className="mx-4 mt-4 p-3 bg-purple-950/40 border border-pink-500/20 rounded-2xl flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2 text-pink-200">
                   <i className="fa-solid fa-comments text-pink-400"></i>
@@ -450,7 +450,6 @@
                 </div>
               </div>
 
-              {/* رصيد الرسائل الشفاف أعلى المحادثة للجوال */}
               <div className="flex items-center gap-2">
                 <span className="text-[11px] text-pink-200/70 bg-purple-950/50 border border-pink-500/20 px-3 py-1 rounded-full">
                   الرصيد: <strong className="text-pink-300">{user.messagesLeft ?? 0}</strong>
@@ -469,21 +468,16 @@
                   </div>
                   <h3 className="text-lg sm:text-xl font-bold text-pink-50">كيف يمكنني مساعدتك اليوم؟</h3>
                   <p className="text-pink-200/50 text-xs mt-2 leading-relaxed">
-                    أهلاً بك! أنا Miss Mia، جاهزة لمساعدتك في الإجابة عن الأسئلة، والأفكار، وتطوير مشاريعك.
+                    أهلاً بك! أنا Miss Mia، جاهزة لمساعدتك في أي وقت.
                   </p>
                   
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-6 w-full text-xs">
+                  {/* الرسالة المقترحة الوحيدة */}
+                  <div className="mt-6 w-full max-w-xs text-xs">
                     <button 
-                      onClick={() => setInputMessage('ساعدني في التخطيط لمشروع جديد')}
-                      className="p-3.5 bg-[#160d21]/80 hover:bg-purple-900/30 border border-purple-900/40 rounded-2xl text-pink-200 text-right transition-all hover:border-pink-400/40 shadow-sm"
+                      onClick={() => sendMessage(null, 'هلا عمتي')}
+                      className="w-full p-3.5 bg-[#160d21]/80 hover:bg-purple-900/30 border border-purple-900/40 rounded-2xl text-pink-200 text-center transition-all hover:border-pink-400/40 shadow-sm font-medium"
                     >
-                      🌸 خطة مشروع جديد
-                    </button>
-                    <button 
-                      onClick={() => setInputMessage('اشرح لي مفاهيم البرمجة بشكل مبسط')}
-                      className="p-3.5 bg-[#160d21]/80 hover:bg-purple-900/30 border border-purple-900/40 rounded-2xl text-pink-200 text-right transition-all hover:border-pink-400/40 shadow-sm"
-                    >
-                      ✨ شرح المفاهيم المعقدة
+                      🌸 هلا عمتي
                     </button>
                   </div>
                 </div>
@@ -526,31 +520,30 @@
               <div ref={messagesEndRef} />
             </div>
 
-            {/* إدخال الرسائل / حالة انتهاء الرصيد */}
+            {/* إدخال الرسائل - متواجد دائماً أسفل الشاشة للموبايل والكمبيوتر */}
             <div className="p-3 sm:p-4 border-t border-purple-900/30 bg-[#140c1f]/50 backdrop-blur-md">
-              {user.messagesLeft <= 0 ? (
-                <div className="max-w-4xl mx-auto bg-rose-950/30 border border-rose-500/30 text-rose-300 p-3 sm:p-4 rounded-2xl text-center text-xs flex items-center justify-center gap-2">
-                  <i className="fa-solid fa-circle-exclamation text-rose-400 text-sm"></i>
-                  <span>لقد استهلكت جميع الرسائل الـ 10 المتاحة لك. للتجديد يرجى التواصل مع الإدارة.</span>
+              {user.messagesLeft <= 0 && (
+                <div className="max-w-4xl mx-auto mb-2 text-rose-300 text-[11px] text-center">
+                  لقد استهلكت جميع الرسائل المتاحة لك.
                 </div>
-              ) : (
-                <form onSubmit={sendMessage} className="max-w-4xl mx-auto relative flex items-center">
-                  <input 
-                    type="text" 
-                    value={inputMessage} 
-                    onChange={e => setInputMessage(e.target.value)}
-                    placeholder="اسأل Miss Mia أي شيء..."
-                    className="w-full bg-[#160d21] border border-purple-900/40 focus:border-pink-400/60 rounded-full py-3 sm:py-3.5 pr-4 pl-12 sm:pl-14 text-xs sm:text-sm text-pink-50 placeholder-pink-300/30 focus:outline-none transition-all shadow-inner"
-                  />
-                  <button 
-                    type="submit" 
-                    disabled={!inputMessage.trim() || sending}
-                    className="absolute left-2 w-8 h-8 sm:w-9 sm:h-9 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-400 hover:to-purple-500 disabled:bg-purple-950 disabled:text-pink-300/20 text-white rounded-full flex items-center justify-center transition-all shadow-[0_0_12px_rgba(244,114,182,0.3)]"
-                  >
-                    <i className="fa-solid fa-paper-plane text-xs"></i>
-                  </button>
-                </form>
               )}
+              <form onSubmit={sendMessage} className="max-w-4xl mx-auto relative flex items-center">
+                <input 
+                  type="text" 
+                  value={inputMessage} 
+                  onChange={e => setInputMessage(e.target.value)}
+                  disabled={user.messagesLeft <= 0 || sending}
+                  placeholder={user.messagesLeft <= 0 ? "نفذ رصيد الرسائل المتاحة..." : "اسأل Miss Mia أي شيء..."}
+                  className="w-full bg-[#160d21] border border-purple-900/40 focus:border-pink-400/60 rounded-full py-3 sm:py-3.5 pr-4 pl-12 sm:pl-14 text-xs sm:text-sm text-pink-50 placeholder-pink-300/30 focus:outline-none transition-all shadow-inner disabled:opacity-50"
+                />
+                <button 
+                  type="submit" 
+                  disabled={!inputMessage.trim() || sending || user.messagesLeft <= 0}
+                  className="absolute left-2 w-8 h-8 sm:w-9 sm:h-9 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-400 hover:to-purple-500 disabled:bg-purple-950 disabled:text-pink-300/20 text-white rounded-full flex items-center justify-center transition-all shadow-[0_0_12px_rgba(244,114,182,0.3)]"
+                >
+                  <i className="fa-solid fa-paper-plane text-xs"></i>
+                </button>
+              </form>
             </div>
 
           </div>
