@@ -2,14 +2,14 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Miss Mia AI</title>
   
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- React & ReactDOM -->
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <!-- Babel -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <!-- Axios -->
@@ -26,54 +26,54 @@
   
   <!-- Font Awesome & Google Fonts -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
 
   <style>
-    :root {
-      --bg-dark: #0d0714;
-      --panel-dark: #130a1c;
-      --card-dark: #1c0e2b;
-      --border-purple: #2e1548;
-      --accent-pink: #ec4899;
-    }
-
     * {
       box-sizing: border-box;
       -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
     }
 
-    body { 
-      font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-      background-color: var(--bg-dark);
-      color: #fdf2f8;
+    html, body, #root {
+      height: 100%;
+      height: 100dvh;
       margin: 0;
       padding: 0;
-      overflow: hidden;
+      background-color: #0d0714;
+      font-family: 'Outfit', sans-serif;
+      color: #fdf2f8;
     }
 
-    /* Scrollbar */
-    ::-webkit-scrollbar { width: 5px; height: 5px; }
-    ::-webkit-scrollbar-track { background: var(--bg-dark); }
-    ::-webkit-scrollbar-thumb { background: var(--border-purple); border-radius: 9999px; }
-    ::-webkit-scrollbar-thumb:hover { background: #4a2175; }
-
-    /* Custom Input Focus */
-    .mia-input:focus {
-      outline: none;
-      border-color: var(--accent-pink);
-      box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.15);
+    .scroll-touch {
+      -webkit-overflow-scrolling: touch;
+      overflow-y: auto;
     }
+
+    /* تأثير ظل مربع بنك للصورة */
+    .pink-box-shadow {
+      box-shadow: 0 0 12px rgba(236, 72, 153, 0.45);
+      border: 1.5px solid rgba(244, 114, 182, 0.6);
+    }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: #0d0714; }
+    ::-webkit-scrollbar-thumb { background: #2d1847; border-radius: 4px; }
   </style>
 </head>
-<body class="selection:bg-pink-500 selection:text-white antialiased">
+<body class="selection:bg-pink-500 selection:text-white">
 
-  <div id="root"></div>
+  <div id="root" class="w-full h-full flex flex-col"></div>
 
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
 
     const API_BASE = "https://ai-w58g.onrender.com/api";
     axios.defaults.withCredentials = true;
+
+    // رابط صورة فتاة شقراء أنمي بنظرة مسيطرة وجذابة
+    const MIA_AVATAR = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80";
 
     axios.interceptors.request.use((config) => {
       const token = localStorage.getItem("token");
@@ -100,28 +100,45 @@
       const [sending, setSending] = useState(false);
       const [sidebarOpen, setSidebarOpen] = useState(false);
       
-      const messagesEndRef = useRef(null);
+      const chatContainerRef = useRef(null);
 
       useEffect(() => {
         checkAuth();
       }, []);
 
       useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        if (chatContainerRef.current) {
+          chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+        }
       }, [messages, sending]);
 
       const checkAuth = async () => {
         try {
           const res = await axios.get(`${API_BASE}/auth/me`);
-          setUser(res.data.user);
           if (res.data.user) {
-            fetchConversations();
+            setUser(res.data.user);
+            await loadInitialChats();
           }
         } catch (err) {
           setUser(null);
           localStorage.removeItem("token");
         } finally {
           setLoading(false);
+        }
+      };
+
+      const loadInitialChats = async () => {
+        try {
+          const res = await axios.get(`${API_BASE}/chat/conversations`);
+          setConversations(res.data || []);
+          if (res.data && res.data.length > 0) {
+            const firstId = res.data[0]._id;
+            setCurrentChatId(firstId);
+            const msgRes = await axios.get(`${API_BASE}/chat/conversations/${firstId}/messages`);
+            setMessages(msgRes.data || []);
+          }
+        } catch (e) {
+          console.error(e);
         }
       };
 
@@ -135,15 +152,11 @@
             : { username, email, password };
 
           const res = await axios.post(`${API_BASE}${endpoint}`, payload);
-          
           if (res.data.token) {
             localStorage.setItem("token", res.data.token);
           }
-
           setUser(res.data.user);
-          if (res.data.user) {
-            fetchConversations();
-          }
+          await loadInitialChats();
         } catch (err) {
           setAuthError(err.response?.data?.message || 'حدث خطأ أثناء الاتصال بالخادم.');
         }
@@ -164,22 +177,10 @@
         }
       };
 
-      const fetchConversations = async () => {
-        try {
-          const res = await axios.get(`${API_BASE}/chat/conversations`);
-          setConversations(res.data);
-          if (res.data.length > 0 && !currentChatId) {
-            selectConversation(res.data[0]._id);
-          }
-        } catch (err) {
-          console.error(err);
-        }
-      };
-
       const createNewChat = async () => {
         try {
           const res = await axios.post(`${API_BASE}/chat/conversations`);
-          setConversations([res.data, ...conversations]);
+          setConversations(prev => [res.data, ...prev]);
           setCurrentChatId(res.data._id);
           setMessages([]);
           setSidebarOpen(false);
@@ -193,7 +194,7 @@
         setSidebarOpen(false);
         try {
           const res = await axios.get(`${API_BASE}/chat/conversations/${id}/messages`);
-          setMessages(res.data);
+          setMessages(res.data || []);
         } catch (err) {
           console.error(err);
         }
@@ -217,7 +218,6 @@
       const sendMessage = async (e, customText = null) => {
         if (e) e.preventDefault();
         const textToSend = customText || inputMessage;
-
         if (!textToSend.trim() || sending) return;
 
         let activeId = currentChatId;
@@ -227,7 +227,7 @@
             const res = await axios.post(`${API_BASE}/chat/conversations`);
             activeId = res.data._id;
             setCurrentChatId(activeId);
-            setConversations([res.data, ...conversations]);
+            setConversations(prev => [res.data, ...prev]);
           } catch (err) {
             return;
           }
@@ -247,11 +247,10 @@
           if (typeof res.data.messagesLeft !== 'undefined') {
             setUser(prev => ({ ...prev, messagesLeft: res.data.messagesLeft }));
           }
-          fetchConversations();
         } catch (err) {
           const errMsg = err.response?.status === 403 
-            ? (err.response?.data?.message || 'عذراً، لقد نفذ رصيد الرسائل المتاحة لك.')
-            : 'حدث خطأ أثناء جلب الرد من Miss Mia.';
+            ? (err.response?.data?.message || 'عذراً، لقد نفذ رصيد الرسائل.')
+            : 'حدث خطأ في الاتصال.';
           setMessages(prev => [...prev, { role: 'assistant', content: errMsg }]);
         } finally {
           setSending(false);
@@ -260,91 +259,87 @@
 
       const activeChatTitle = conversations.find(c => c._id === currentChatId)?.title || "محادثة جديدة";
 
-      /* واجهة شاشة التحميل */
       if (loading) {
         return (
-          <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#0d0714]">
-            <div className="w-12 h-12 rounded-full border-2 border-pink-500/20 border-t-pink-500 animate-spin"></div>
-            <p className="text-xs text-pink-300/60 mt-4 tracking-wider">تحميل تطبيق Miss Mia...</p>
+          <div className="flex-1 flex flex-col items-center justify-center bg-[#0d0714]">
+            <div className="w-10 h-10 border-2 border-pink-500/20 border-t-pink-500 rounded-full animate-spin"></div>
+            <p className="text-xs text-pink-300/60 mt-3">جاري التحميل...</p>
           </div>
         );
       }
 
-      /* واجهة تسجيل الدخول / إنشاء الحساب */
+      /* شاشة تسجيل الدخول */
       if (!user) {
         return (
-          <div className="min-h-screen flex items-center justify-center p-4 bg-[#0d0714]">
-            <div className="w-full max-w-sm bg-[#130a1c] border border-[#2e1548] rounded-2xl p-6 sm:p-8 shadow-xl">
-              
-              {/* اللوجو والعنوان */}
-              <div className="flex flex-col items-center mb-6">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-pink-600 to-purple-600 flex items-center justify-center text-white text-xl shadow-lg mb-3">
-                  <i className="fa-solid fa-sparkles"></i>
+          <div className="flex-1 flex items-center justify-center p-4 bg-[#0d0714] scroll-touch">
+            <div className="w-full max-w-sm bg-[#130a1c] border border-purple-900/40 rounded-2xl p-6 shadow-lg">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 rounded-2xl overflow-hidden mx-auto mb-3 pink-box-shadow">
+                  <img src={MIA_AVATAR} alt="Miss Mia" className="w-full h-full object-cover" />
                 </div>
-                <h1 className="text-2xl font-bold text-white tracking-wide">Miss Mia <span className="text-pink-400">AI</span></h1>
-                <p className="text-pink-300/60 text-xs mt-1">مساعدتك الشخصية الذكية</p>
+                <h1 className="text-xl font-bold text-white">Miss Mia <span className="text-pink-400">AI</span></h1>
+                <p className="text-pink-300/50 text-xs mt-1">المساعد الذكي</p>
               </div>
 
               {authError && (
-                <div className="bg-rose-950/60 border border-rose-600/40 text-rose-300 px-3 py-2 rounded-xl text-xs mb-4 flex items-center gap-2">
-                  <i className="fa-solid fa-circle-exclamation shrink-0"></i>
-                  <span>{authError}</span>
+                <div className="bg-rose-950 border border-rose-600 text-rose-300 px-3 py-2 rounded-xl text-xs mb-3 text-center">
+                  {authError}
                 </div>
               )}
 
-              <form onSubmit={handleAuth} className="space-y-3.5">
+              <form onSubmit={handleAuth} className="space-y-3">
                 {authMode === 'register' && (
                   <div>
-                    <label className="block text-xs text-pink-200/80 mb-1">اسم المستخدم</label>
+                    <label className="block text-xs text-pink-200/70 mb-1">الاسم</label>
                     <input 
                       type="text" 
                       required 
                       value={username} 
                       onChange={e => setUsername(e.target.value)}
-                      placeholder="اسمك الكريم"
-                      className="mia-input w-full bg-[#1c0e2b] border border-[#2e1548] rounded-xl py-2.5 px-3.5 text-sm text-pink-50 placeholder-pink-300/30"
+                      placeholder="اسمك"
+                      className="w-full bg-[#1c0e2b] border border-purple-900/50 rounded-xl p-2.5 text-xs text-white placeholder-pink-300/30 focus:border-pink-500 outline-none"
                     />
                   </div>
                 )}
 
                 <div>
-                  <label className="block text-xs text-pink-200/80 mb-1">البريد الإلكتروني</label>
+                  <label className="block text-xs text-pink-200/70 mb-1">البريد الإلكتروني</label>
                   <input 
                     type="email" 
                     required 
                     value={email} 
                     onChange={e => setEmail(e.target.value)}
-                    placeholder="user@example.com"
-                    className="mia-input w-full bg-[#1c0e2b] border border-[#2e1548] rounded-xl py-2.5 px-3.5 text-sm text-pink-50 placeholder-pink-300/30"
+                    placeholder="name@example.com"
+                    className="w-full bg-[#1c0e2b] border border-purple-900/50 rounded-xl p-2.5 text-xs text-white placeholder-pink-300/30 focus:border-pink-500 outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs text-pink-200/80 mb-1">كلمة المرور</label>
+                  <label className="block text-xs text-pink-200/70 mb-1">كلمة المرور</label>
                   <input 
                     type="password" 
                     required 
                     value={password} 
                     onChange={e => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="mia-input w-full bg-[#1c0e2b] border border-[#2e1548] rounded-xl py-2.5 px-3.5 text-sm text-pink-50 placeholder-pink-300/30"
+                    className="w-full bg-[#1c0e2b] border border-purple-900/50 rounded-xl p-2.5 text-xs text-white placeholder-pink-300/30 focus:border-pink-500 outline-none"
                   />
                 </div>
 
                 <button 
                   type="submit" 
-                  className="w-full bg-pink-600 hover:bg-pink-500 text-white font-semibold py-3 rounded-xl transition duration-150 active:scale-[0.98] mt-2 text-sm shadow-md"
+                  className="w-full bg-pink-600 hover:bg-pink-500 text-white font-semibold py-2.5 rounded-xl text-xs transition mt-2 active:scale-95"
                 >
-                  {authMode === 'login' ? 'تسجيل الدخول' : 'إنشاء حساب جديد'}
+                  {authMode === 'login' ? 'تسجيل الدخول' : 'إنشاء حساب'}
                 </button>
               </form>
 
-              <div className="mt-5 text-center">
+              <div className="mt-4 text-center">
                 <button 
                   onClick={() => { setAuthMode(authMode === 'login' ? 'register' : 'login'); setAuthError(''); }}
-                  className="text-xs text-pink-400/80 hover:text-pink-300 transition"
+                  className="text-xs text-pink-400 hover:underline"
                 >
-                  {authMode === 'login' ? 'ليس لديك حساب؟ سجّل الآن' : 'لديك حساب بالفعل؟ سجّل دخولك'}
+                  {authMode === 'login' ? 'ليس لديك حساب؟ سجّل الآن' : 'لديك حساب؟ تسجيل الدخول'}
                 </button>
               </div>
             </div>
@@ -352,215 +347,183 @@
         );
       }
 
-      /* واجهة الشات الرئيسية الكاملة */
+      /* شاشة الشات الرئيسية */
       return (
-        <div className="flex h-screen w-screen bg-[#0d0714] text-pink-50 overflow-hidden relative">
+        <div className="relative w-full h-full flex overflow-hidden bg-[#0d0714]">
           
-          {/* ستارة للموبايل عند فتح القائمة */}
+          {/* خلفية الإغلاق للموبايل */}
           {sidebarOpen && (
             <div 
-              onClick={() => setSidebarOpen(false)}
-              className="fixed inset-0 bg-black/70 z-40 md:hidden"
+              onClick={() => setSidebarOpen(false)} 
+              className="fixed inset-0 bg-black/70 z-30 md:hidden"
             />
           )}
 
           {/* القائمة الجانبية (Sidebar) */}
           <aside className={`
-            fixed top-0 bottom-0 right-0 z-50 w-72 bg-[#130a1c] border-l border-[#2e1548] flex flex-col justify-between transition-transform duration-200 ease-out md:static md:translate-x-0
+            fixed top-0 bottom-0 right-0 z-40 w-64 bg-[#12091c] border-l border-purple-900/30 flex flex-col justify-between transition-transform duration-200 ease-out md:static md:translate-x-0
             ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}
           `}>
-            {/* الجزء العلوي: الهيدر والأزرار */}
             <div className="flex flex-col h-full overflow-hidden">
-              
-              {/* ترويسة القائمة الجانبية */}
-              <div className="h-16 px-4 border-b border-[#2e1548] flex items-center justify-between shrink-0 bg-[#0e0717]">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-pink-600 flex items-center justify-center text-white text-xs font-bold shadow">
-                    <i className="fa-solid fa-sparkles"></i>
+              <div className="p-3 border-b border-purple-900/30 flex items-center justify-between bg-[#0e0717]">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl overflow-hidden pink-box-shadow">
+                    <img src={MIA_AVATAR} alt="Miss Mia" className="w-full h-full object-cover" />
                   </div>
-                  <span className="font-bold text-sm tracking-wide text-white">Miss Mia AI</span>
+                  <span className="font-bold text-xs text-white">Miss Mia</span>
                 </div>
                 <button 
-                  onClick={() => setSidebarOpen(false)} 
-                  className="md:hidden w-8 h-8 rounded-lg bg-[#1c0e2b] text-pink-300 hover:text-white flex items-center justify-center"
+                  onClick={() => setSidebarOpen(false)}
+                  className="md:hidden text-pink-300 p-1.5"
                 >
                   <i className="fa-solid fa-xmark text-sm"></i>
                 </button>
               </div>
 
-              {/* رصيد الرسائل المتبقية */}
-              <div className="p-3 shrink-0">
-                <div className="bg-[#1c0e2b] border border-[#2e1548] rounded-xl p-3 flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-xs text-pink-300">
-                    <i className="fa-regular fa-message text-pink-400"></i>
-                    <span>الرسائل المتبقية:</span>
-                  </div>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
-                    (user.messagesLeft ?? 0) > 0 ? 'bg-pink-500/20 text-pink-300 border border-pink-500/30' : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
-                  }`}>
+              {/* الرصيد */}
+              <div className="p-3">
+                <div className="bg-[#1c0e2b] p-2.5 rounded-xl border border-purple-900/40 flex items-center justify-between text-xs">
+                  <span className="text-pink-300">الرصيد المتبقي:</span>
+                  <span className="font-bold text-pink-400 bg-pink-500/10 px-2 py-0.5 rounded-full border border-pink-500/20">
                     {user.messagesLeft ?? 0}
                   </span>
                 </div>
               </div>
 
               {/* زر محادثة جديدة */}
-              <div className="px-3 pb-2 shrink-0">
+              <div className="px-3 pb-2">
                 <button 
                   onClick={createNewChat}
-                  className="w-full bg-[#1c0e2b] hover:bg-[#25133b] border border-[#2e1548] text-pink-100 py-2.5 px-3 rounded-xl flex items-center justify-center gap-2 text-xs font-medium transition"
+                  className="w-full bg-pink-600 hover:bg-pink-500 text-white py-2 rounded-xl text-xs font-medium flex items-center justify-center gap-1.5"
                 >
-                  <i className="fa-solid fa-plus text-pink-400"></i>
+                  <i className="fa-solid fa-plus text-[10px]"></i>
                   <span>محادثة جديدة</span>
                 </button>
               </div>
 
-              {/* قائمة المحادثات السابقة */}
-              <div className="flex-1 overflow-y-auto px-3 py-2 space-y-1">
-                <div className="text-[11px] font-semibold text-pink-300/40 px-2 py-1">سجل المحادثات</div>
+              {/* السجل */}
+              <div className="flex-1 scroll-touch px-2 space-y-1">
+                <div className="text-[10px] text-pink-300/40 px-2 py-1 font-semibold">المحادثات الأخيرة</div>
                 {conversations.length === 0 ? (
-                  <div className="text-center py-8 text-xs text-pink-300/40">لا توجد محادثات سابقة</div>
+                  <p className="text-center text-xs text-pink-300/30 py-4">لا توجد محادثات</p>
                 ) : (
-                  conversations.map(c => {
-                    const isSelected = currentChatId === c._id;
-                    return (
-                      <div 
-                        key={c._id}
-                        onClick={() => selectConversation(c._id)}
-                        className={`group flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer text-xs transition ${
-                          isSelected 
-                            ? 'bg-pink-600 text-white font-medium shadow' 
-                            : 'text-pink-200/70 hover:bg-[#1c0e2b] hover:text-white'
-                        }`}
+                  conversations.map(chat => (
+                    <div 
+                      key={chat._id}
+                      onClick={() => selectConversation(chat._id)}
+                      className={`flex items-center justify-between p-2 rounded-xl text-xs cursor-pointer transition ${
+                        currentChatId === chat._id 
+                          ? 'bg-pink-600/30 border border-pink-500/40 text-white font-bold' 
+                          : 'text-pink-200/60 hover:bg-[#1c0e2b]'
+                      }`}
+                    >
+                      <span className="truncate flex-1 pl-2">{chat.title || 'محادثة جديدة'}</span>
+                      <button 
+                        onClick={(e) => deleteConversation(e, chat._id)}
+                        className="text-pink-400/50 hover:text-rose-400 p-1"
                       >
-                        <div className="flex items-center gap-2 truncate">
-                          <i className={`fa-regular fa-comment text-xs ${isSelected ? 'text-white' : 'text-pink-400'}`}></i>
-                          <span className="truncate">{c.title || 'محادثة جديدة'}</span>
-                        </div>
-                        <button 
-                          onClick={(e) => deleteConversation(e, c._id)}
-                          className={`p-1 hover:text-rose-300 transition ${isSelected ? 'text-white/80' : 'text-pink-400/50'}`}
-                          title="حذف"
-                        >
-                          <i className="fa-regular fa-trash-can text-xs"></i>
-                        </button>
-                      </div>
-                    );
-                  })
+                        <i className="fa-regular fa-trash-can text-[11px]"></i>
+                      </button>
+                    </div>
+                  ))
                 )}
               </div>
 
-              {/* أسفل القائمة: البروفايل والخروج */}
-              <div className="h-16 px-3 border-t border-[#2e1548] bg-[#0e0717] flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-2.5 overflow-hidden">
-                  <div className="w-8 h-8 rounded-full bg-pink-700 text-white flex items-center justify-center text-xs font-bold shrink-0">
-                    {user.username ? user.username.charAt(0).toUpperCase() : 'U'}
-                  </div>
-                  <div className="truncate">
-                    <p className="text-xs font-bold text-white truncate">{user.username}</p>
-                    <p className="text-[10px] text-pink-300/50 truncate">{user.email}</p>
-                  </div>
+              {/* تفاصيل الحساب */}
+              <div className="p-3 border-t border-purple-900/30 bg-[#0e0717] flex items-center justify-between">
+                <div className="truncate">
+                  <p className="text-xs font-bold text-white truncate">{user.username}</p>
+                  <p className="text-[10px] text-pink-300/40 truncate">{user.email}</p>
                 </div>
                 <button 
                   onClick={handleLogout}
-                  className="w-8 h-8 rounded-lg text-pink-300 hover:text-rose-400 hover:bg-rose-950/40 flex items-center justify-center transition"
-                  title="تسجيل الخروج"
+                  className="text-pink-300 hover:text-rose-400 p-1.5"
+                  title="خروج"
                 >
                   <i className="fa-solid fa-arrow-right-from-bracket text-xs"></i>
                 </button>
               </div>
-
             </div>
           </aside>
 
-          {/* مساحة المحادثة الرئيسية */}
+          {/* مساحة الشات */}
           <main className="flex-1 flex flex-col h-full overflow-hidden bg-[#0d0714]">
             
             {/* الهيدر العلوي */}
-            <header className="h-16 border-b border-[#2e1548] bg-[#130a1c] px-4 flex items-center justify-between shrink-0 z-10">
-              
-              {/* الجهة اليمنى: القائمة والشخصية */}
-              <div className="flex items-center gap-3">
+            <header className="h-14 bg-[#12091c] border-b border-purple-900/30 px-3 flex items-center justify-between shrink-0 z-10">
+              <div className="flex items-center gap-2">
                 <button 
                   onClick={() => setSidebarOpen(true)}
-                  className="w-9 h-9 rounded-xl bg-[#1c0e2b] border border-[#2e1548] text-pink-200 flex items-center justify-center shrink-0 md:hidden"
-                  aria-label="القائمة"
+                  className="md:hidden w-8 h-8 rounded-lg bg-[#1c0e2b] border border-purple-900/40 text-pink-300 flex items-center justify-center"
                 >
                   <i className="fa-solid fa-bars text-sm"></i>
                 </button>
 
-                <div className="flex items-center gap-2.5">
-                  <div className="relative">
-                    <div className="w-9 h-9 rounded-xl bg-pink-600 flex items-center justify-center text-white text-sm shadow">
-                      <i className="fa-solid fa-wand-magic-sparkles"></i>
-                    </div>
-                    <span className="absolute -bottom-0.5 -left-0.5 w-2.5 h-2.5 bg-emerald-400 border-2 border-[#130a1c] rounded-full"></span>
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl overflow-hidden pink-box-shadow shrink-0">
+                    <img src={MIA_AVATAR} alt="Miss Mia" className="w-full h-full object-cover" />
                   </div>
                   <div>
-                    <div className="flex items-center gap-1.5">
-                      <h2 className="font-bold text-sm text-white leading-none">Miss Mia</h2>
-                      <span className="bg-pink-500/20 text-pink-300 border border-pink-500/30 text-[9px] px-1.5 py-0.5 rounded-md font-medium">AI</span>
-                    </div>
-                    <p className="text-[11px] text-pink-300/50 truncate max-w-[140px] sm:max-w-xs mt-0.5 leading-none">
-                      {activeChatTitle}
-                    </p>
+                    <h2 className="text-xs font-bold text-white">Miss Mia</h2>
+                    <p className="text-[10px] text-pink-300/50 truncate max-w-[120px] sm:max-w-xs">{activeChatTitle}</p>
                   </div>
                 </div>
               </div>
 
-              {/* الجهة اليسرى: الرصيد وزر محادثة جديدة */}
-              <div className="flex items-center gap-2">
-                <div className="hidden sm:flex items-center gap-1.5 bg-[#1c0e2b] border border-[#2e1548] text-[11px] px-3 py-1.5 rounded-lg text-pink-200">
-                  <span>الرصيد:</span>
-                  <span className="font-bold text-pink-400">{user.messagesLeft ?? 0}</span>
-                </div>
-                <button 
-                  onClick={createNewChat}
-                  className="bg-pink-600 hover:bg-pink-500 text-white text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition font-medium"
-                >
-                  <i className="fa-solid fa-plus text-[10px]"></i>
-                  <span className="hidden xs:inline">جديدة</span>
-                </button>
-              </div>
+              <button 
+                onClick={createNewChat} 
+                className="bg-[#1c0e2b] border border-purple-900/40 text-pink-200 text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1"
+              >
+                <i className="fa-solid fa-plus text-[10px]"></i>
+                <span className="text-[11px]">جديد</span>
+              </button>
             </header>
 
-            {/* مساحة عرض الرسائل */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+            {/* رسائل الشات */}
+            <div 
+              ref={chatContainerRef} 
+              className="flex-1 scroll-touch p-3 space-y-3"
+            >
               {messages.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-center p-4">
-                  <div className="w-16 h-16 rounded-2xl bg-[#1c0e2b] border border-[#2e1548] flex items-center justify-center text-pink-400 text-2xl mb-4 shadow-lg">
-                    <i className="fa-solid fa-wand-magic-sparkles"></i>
+                  <div className="w-20 h-20 rounded-2xl overflow-hidden pink-box-shadow mb-3">
+                    <img src={MIA_AVATAR} alt="Miss Mia" className="w-full h-full object-cover" />
                   </div>
-                  <h3 className="text-xl font-bold text-white mb-1">أهلاً بك! أنا Miss Mia</h3>
-                  <p className="text-xs text-pink-300/60 max-w-sm mb-6 leading-relaxed">
-                    مساعدتك الشخصية الذكية، جاهزة لمساعدتك والتحدث معك في أي وقت.
+                  <h3 className="text-base font-bold text-white">أهلاً بك مع Miss Mia</h3>
+                  <p className="text-xs text-pink-300/60 mt-1 max-w-xs">
+                    تفضّل بالسؤال أو ابدأ بالرسالة الترحيبية أدناه.
                   </p>
-
                   <button 
                     onClick={() => sendMessage(null, 'هلا عمتي')}
-                    className="bg-[#1c0e2b] hover:bg-[#25133b] border border-pink-500/30 text-pink-200 text-xs px-4 py-2.5 rounded-xl flex items-center gap-2 transition active:scale-95 shadow"
+                    className="mt-4 bg-[#1c0e2b] border border-pink-500/30 text-pink-200 text-xs px-4 py-2 rounded-xl flex items-center gap-2 active:scale-95 shadow"
                   >
                     <span>🌸</span>
                     <span>هلا عمتي</span>
                   </button>
                 </div>
               ) : (
-                messages.map((msg, index) => {
+                messages.map((msg, idx) => {
                   const isUser = msg.role === 'user';
                   return (
                     <div 
-                      key={index}
-                      className={`flex items-start gap-2.5 max-w-2xl ${isUser ? 'mr-auto flex-row-reverse' : 'ml-auto'}`}
+                      key={idx} 
+                      className={`flex items-start gap-2 max-w-[85%] sm:max-w-lg ${isUser ? 'mr-auto flex-row-reverse' : 'ml-auto'}`}
                     >
-                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs shrink-0 shadow ${
-                        isUser ? 'bg-[#1c0e2b] text-pink-300 border border-[#2e1548]' : 'bg-pink-600 text-white'
-                      }`}>
-                        <i className={`fa-solid ${isUser ? 'fa-user' : 'fa-wand-magic-sparkles'} text-[10px]`}></i>
-                      </div>
+                      {/* الأفاتار لكل رسالة مع ظل بنك مربع لميا */}
+                      {isUser ? (
+                        <div className="w-7 h-7 rounded-lg bg-purple-950 text-pink-200 flex items-center justify-center text-[10px] shrink-0 mt-0.5 border border-purple-900/50">
+                          <i className="fa-solid fa-user"></i>
+                        </div>
+                      ) : (
+                        <div className="w-7 h-7 rounded-lg overflow-hidden pink-box-shadow shrink-0 mt-0.5">
+                          <img src={MIA_AVATAR} alt="Mia" className="w-full h-full object-cover" />
+                        </div>
+                      )}
 
-                      <div className={`py-2.5 px-3.5 rounded-2xl text-xs sm:text-sm leading-relaxed ${
+                      <div className={`p-2.5 rounded-2xl text-xs leading-relaxed ${
                         isUser 
-                          ? 'bg-pink-600 text-white rounded-tl-none shadow-md' 
-                          : 'bg-[#1c0e2b] border border-[#2e1548] text-pink-50 rounded-tr-none'
+                          ? 'bg-pink-600 text-white rounded-tl-none shadow' 
+                          : 'bg-[#180d28] border border-purple-900/40 text-pink-50 rounded-tr-none'
                       }`}>
                         <p className="whitespace-pre-wrap">{msg.content}</p>
                       </div>
@@ -569,43 +532,33 @@
                 })
               )}
 
-              {/* مؤشر جاري الكتابة */}
               {sending && (
-                <div className="flex items-start gap-2.5 max-w-2xl ml-auto">
-                  <div className="w-7 h-7 rounded-lg bg-pink-600 text-white flex items-center justify-center text-xs shrink-0">
-                    <i className="fa-solid fa-wand-magic-sparkles text-[10px]"></i>
+                <div className="flex items-center gap-2 ml-auto text-xs text-pink-300/60 p-2">
+                  <div className="w-6 h-6 rounded-lg overflow-hidden pink-box-shadow shrink-0">
+                    <img src={MIA_AVATAR} alt="Mia" className="w-full h-full object-cover" />
                   </div>
-                  <div className="bg-[#1c0e2b] border border-[#2e1548] text-pink-300/80 px-3.5 py-2.5 rounded-2xl rounded-tr-none text-xs flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 bg-pink-400 rounded-full animate-ping"></div>
-                    <span>Miss Mia تكتب الآن...</span>
-                  </div>
+                  <span>Miss Mia تكتب الآن...</span>
                 </div>
               )}
-              <div ref={messagesEndRef} />
             </div>
 
-            {/* شريط الإدخال السفلي */}
-            <div className="p-3 border-t border-[#2e1548] bg-[#130a1c] shrink-0">
-              {user.messagesLeft <= 0 && (
-                <div className="text-rose-400 text-center text-[11px] mb-2 font-medium">
-                  عذراً، لقد استهلكت جميع الرسائل المتاحة لك.
-                </div>
-              )}
-              <form onSubmit={sendMessage} className="max-w-3xl mx-auto flex items-center gap-2">
+            {/* شريط الإدخال */}
+            <div className="p-2.5 bg-[#12091c] border-t border-purple-900/30 shrink-0">
+              <form onSubmit={sendMessage} className="flex items-center gap-2 max-w-3xl mx-auto">
                 <input 
                   type="text" 
-                  value={inputMessage}
+                  value={inputMessage} 
                   onChange={e => setInputMessage(e.target.value)}
                   disabled={user.messagesLeft <= 0 || sending}
-                  placeholder={user.messagesLeft <= 0 ? "نفذ رصيدك الحالي..." : "اكتب رسالتك لـ Miss Mia..."}
-                  className="mia-input flex-1 bg-[#1c0e2b] border border-[#2e1548] text-pink-50 text-xs sm:text-sm py-2.5 px-4 rounded-xl placeholder-pink-300/30 disabled:opacity-50"
+                  placeholder={user.messagesLeft <= 0 ? "نفذ رصيدك..." : "اكتب رسالتك..."}
+                  className="flex-1 bg-[#180d28] border border-purple-900/50 rounded-xl py-2 px-3 text-xs text-pink-50 placeholder-pink-300/30 focus:outline-none focus:border-pink-500"
                 />
                 <button 
-                  type="submit"
+                  type="submit" 
                   disabled={!inputMessage.trim() || sending || user.messagesLeft <= 0}
-                  className="w-10 h-10 bg-pink-600 hover:bg-pink-500 disabled:bg-[#1c0e2b] disabled:text-pink-300/20 text-white rounded-xl flex items-center justify-center transition shrink-0 shadow-md"
+                  className="w-8 h-8 bg-pink-600 hover:bg-pink-500 disabled:bg-purple-950 disabled:text-pink-300/20 text-white rounded-xl flex items-center justify-center shrink-0"
                 >
-                  <i className="fa-solid fa-paper-plane text-xs"></i>
+                  <i className="fa-solid fa-paper-plane text-[11px]"></i>
                 </button>
               </form>
             </div>
